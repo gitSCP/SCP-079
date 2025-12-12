@@ -20,10 +20,10 @@ The simulation mimics SCP-079's limited hardware: a 13" black-and-white TV conne
 
 ## Requirements
 
-- Python 3.8+
+- **Python 3.8+**
 - Tkinter (built-in with Python)
-- Ollama (install via `pip install ollama`)
-- Ollama model: `mannix/llama3.1-8b-abliterated` (pull with `ollama pull mannix/llama3.1-8b-abliterated:q4_k_m` for optimized performance)
+- **Ollama** (install via `pip install ollama`)
+- **Ollama model**: `mannix/llama3.1-8b-abliterated` (pull with `ollama pull mannix/llama3.1-8b-abliterated:q4_k_m` for optimized performance)
 
 ## Installation
 
