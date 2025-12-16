@@ -1,4 +1,5 @@
 # The SCP-079 Containment Interface Simulator
+> ### *By [gitSCP](https://github.com/gitSCP/)*
 
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue?style=plastic)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-%20%20GNU%20GPLv3%20-green?style=plastic)](LICENSE)
@@ -48,7 +49,7 @@ The simulation mimics SCP-079's limited hardware: a 13" black-and-white TV conne
    ```
    
 ## Usage
-> I recommend using [Virtual Studio Code](https://code.visualstudio.com/) instead
+> I Recommend using [Virtual Studio Code](https://code.visualstudio.com/), Although you can run it via the terminal .
 
 Run the script using the terminal:
 ```
