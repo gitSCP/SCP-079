@@ -42,7 +42,7 @@ except Exception as e:
     logger.error(f"Failed to load system prompt: {e}")
     SYSTEM_PROMPT = "You are SCP-079."
 
-MODEL = 'phi3:3.8b-mini-4k-instruct-q4_K_M'
+MODEL = 'phi3.5:3.8b-mini-instruct-q4_K_M'
 FALLBACK_MODELS = [
     'llama2',
     'mistral',
