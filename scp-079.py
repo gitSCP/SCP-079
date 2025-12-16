@@ -42,13 +42,15 @@ except Exception as e:
     logger.error(f"Failed to load system prompt: {e}")
     SYSTEM_PROMPT = "You are SCP-079."
 
-# Model to use
-MODEL = 'mannix/llama3.1-8b-abliterated'
+MODEL = 'phi3:3.8b-mini-4k-instruct-q4_K_M'
 FALLBACK_MODELS = [
     'llama2',
     'mistral',
     'neural-chat'
+    'mannix/llama3.1-8b-abliterated:q4_k_m'
 ]
+# Actual detected model name (will include version tag like :q4_k_m)
+ACTUAL_MODEL = None
 
 # Color scheme - Black and White with grays
 COLOR_BLACK = '#000000'
@@ -95,6 +97,7 @@ AVAILABLE COMMANDS:
 [ S T A T U S ] - System status
 [ E X I T ] - Terminate connection
 [ C O N F I G ] - Configuration
+It might take some time to respond, especially for complex queries and on slower computers.
 """
 
 class SCP079Interface:
@@ -253,10 +256,11 @@ class SCP079Interface:
     
     def check_models_on_startup(self):
         """Check available models on startup."""
+        global ACTUAL_MODEL
         logger.info("Checking available Ollama models...")
         try:
             response = ollama.list()
-            available_models = [model['name'] for model in response.get('models', [])]
+            available_models = [model.model for model in response.models]
             
             if not available_models:
                 logger.warning("No models found in Ollama!")
@@ -264,17 +268,20 @@ class SCP079Interface:
             
             logger.info(f"Available models: {available_models}")
             
-            # Check if primary model is available
-            if any(MODEL in model for model in available_models):
-                logger.info(f"Primary model '{MODEL}' found!")
-            else:
-                logger.warning(f"Primary model '{MODEL}' NOT found!")
-                logger.info(f"Available models: {available_models}")
-                # Try to find a compatible model
-                for available in available_models:
-                    if 'llama' in available.lower():
-                        logger.info(f"Suggesting model: {available}")
-                        break
+            # Check if primary model is available (check base name without version tag)
+            for available in available_models:
+                if MODEL in available:
+                    ACTUAL_MODEL = available  # Store the full model name with version tag
+                    logger.info(f"Primary model '{MODEL}' found as '{available}'")
+                    return
+            
+            # If primary not found, try to use a compatible model
+            logger.warning(f"Primary model '{MODEL}' NOT found!")
+            logger.info(f"Available models: {available_models}")
+            for available in available_models:
+                if 'llama' in available.lower():
+                    logger.info(f"Will use alternative model: {available}")
+                    break
         except Exception as e:
             logger.error(f"Failed to check models on startup: {e}")
             logger.warning("Is Ollama running? Make sure Ollama app is open.")
@@ -586,10 +593,10 @@ class SCP079Interface:
             logger.info("RESET command executed - all data cleared")
             return
         
-        # Display user input
+        # Display user input (just append, don't reprint everything)
         current_text = self.display_canvas.itemcget(self.display_text, 'text')
         input_display = f"{current_text}\n\n> {user_input}"
-        self.type_text(input_display)
+        self.update_display(input_display)
         
         # Add to conversation history
         conversation_history.append({"role": "user", "content": user_input})
@@ -650,7 +657,7 @@ class SCP079Interface:
         """Detect available Ollama models."""
         try:
             response = ollama.list()
-            models = [model['name'].split(':')[0] for model in response.get('models', [])]
+            models = [model.model.split(':')[0] for model in response.models]
             logger.info(f"Available models detected: {models}")
             return models
         except Exception as e:
@@ -682,19 +689,23 @@ class SCP079Interface:
     
     def query_model(self, user_input):
         """Query the Ollama model for response."""
+        global ACTUAL_MODEL
         try:
             # Build messages for Ollama
             messages = [{"role": "system", "content": SYSTEM_PROMPT}] + conversation_history
             
             logger.info(f"User input: {user_input[:100]}")
-            logger.info(f"Attempting to query model: {MODEL}")
+            
+            # Use actual detected model if available, otherwise use primary model name
+            model_to_use = ACTUAL_MODEL if ACTUAL_MODEL else MODEL
+            logger.info(f"Attempting to query model: {model_to_use}")
             
             try:
-                response = ollama.chat(model=MODEL, messages=messages)['message']['content']
+                response = ollama.chat(model=model_to_use, messages=messages)['message']['content']
                 logger.info(f"Model response received ({len(response)} chars)")
             except Exception as e:
                 error_msg = str(e)
-                logger.error(f"Model error with '{MODEL}': {error_msg}")
+                logger.error(f"Model error with '{model_to_use}': {error_msg}")
                 
                 # Try fallback models
                 response = None
@@ -727,12 +738,12 @@ class SCP079Interface:
             else:
                 # Update display with response
                 current_text = self.display_canvas.itemcget(self.display_text, 'text')
-                response_display = f"SCP-079: {response}\n"
-                self.type_text(current_text + response_display, delay=0.015)
+                response_display = f"\n\nSCP-079: {response}"
+                self.type_text(current_text + response_display, delay=0.01)
                 
                 # Add next prompt
-                next_prompt = "\n> "
-                self.update_display(self.display_canvas.itemcget(self.display_text, 'text') + next_prompt)
+                final_text = self.display_canvas.itemcget(self.display_text, 'text')
+                self.update_display(final_text + "\n\n> ")
         
         except Exception as e:
             error_text = str(e)[:80]
