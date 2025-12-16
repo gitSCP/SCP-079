@@ -75,7 +75,7 @@ This project is licensed under the GNU GPLv3 License - see the [LICENSE](LICENSE
 
 ## Acknowledgments
 
-- Inspired by the SCP Foundation wiki entry for [SCP-079](http://www.scpwiki.com/scp-079).
+- Inspired by the SCP Foundation wiki entry for [SCP-079](http://www.scpwiki.com/scp-079). and [*CarterNotSteve*'s Basic 079](https://www.reddit.com/r/SCP/comments/jgt5ga/python_script_i_made_to_make_a_replica_of_scp079/)
   
 - Powered by [Ollama](https://ollama.com), uses [Phi 3.5 (3.8b)](https://ollama.com/library/phi3.5:3.8b-mini-instruct-q4_K_M) the uncensored Llama model by [mannix](https://ollama.com/mannix/llama3.1-8b-abliterated).
   
