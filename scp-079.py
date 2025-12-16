@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+
+# Made by gitSCP
+# github.com/gitSCP/scp-079
+
+#what to do next: 2 things the model isnt outputting properly and 2 dont reprint everything (the whole RF Cable spiel) everytime you type a prompt, also only reprint for certain commands and for the text box thing also auto scroll to next response and make eveything sizeable and add a maximize capability
+
 import tkinter as tk
 from tkinter import font, messagebox
 import ollama
@@ -12,7 +18,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Set Ollama home directory
-os.environ['OLLAMA_MODELS'] = r'C:\Users\gaming\.ollama\models'
+os.environ['OLLAMA_MODELS'] = r'C:\Users\%USERNAME%\.ollama\models'
 
 # Get the directory of the current script
 script_dir = Path(__file__).parent
@@ -30,7 +36,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logger.info("=" * 60)
-logger.info("SCP-079 Containment Interface v2.3 - STARTED")
+logger.info("SCP-079 Containment Interface - STARTED")
 logger.info("=" * 60)
 
 # Load system prompt from JSON file
@@ -42,11 +48,10 @@ except Exception as e:
     logger.error(f"Failed to load system prompt: {e}")
     SYSTEM_PROMPT = "You are SCP-079."
 
+# Model to use
 MODEL = 'phi3.5:3.8b-mini-instruct-q4_K_M'
 FALLBACK_MODELS = [
-    'llama2',
-    'mistral',
-    'neural-chat'
+# Add more by running `ollama list` the in terminal, then copying the model names here.
     'mannix/llama3.1-8b-abliterated:q4_k_m'
 ]
 # Actual detected model name (will include version tag like :q4_k_m)
@@ -103,10 +108,16 @@ It might take some time to respond, especially for complex queries and on slower
 class SCP079Interface:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("SCP-079 Containment Interface v2.2 - ENHANCED")
+        self.root.title("SCP-079 Containment Interface")
         self.root.geometry("950x850")
         self.root.configure(bg=COLOR_BLACK)
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
+        self.is_fullscreen = False
+        self.last_geometry = "950x850"
+        
+        # Bind F11 for fullscreen toggle
+        self.root.bind('<F11>', self.toggle_fullscreen)
+        self.root.bind('<Alt-Return>', self.toggle_fullscreen)
         
         # Fonts
         self.retro_font = font.Font(family="Courier New", size=10, weight="bold")
@@ -142,6 +153,14 @@ class SCP079Interface:
                  activebackground=COLOR_LIGHT_GRAY, activeforeground=COLOR_BLACK,
                  bd=1, padx=5, pady=3, command=self.toggle_time).pack(side=tk.LEFT, padx=2, pady=3)
         
+        tk.Button(control_frame, text="MAXIMIZE", font=self.button_font, bg=COLOR_MED_GRAY, fg=COLOR_WHITE,
+                 activebackground=COLOR_LIGHT_GRAY, activeforeground=COLOR_BLACK,
+                 bd=1, padx=5, pady=3, command=self.maximize_window).pack(side=tk.LEFT, padx=2, pady=3)
+        
+        tk.Button(control_frame, text="FULLSCREEN", font=self.button_font, bg=COLOR_MED_GRAY, fg=COLOR_WHITE,
+                 activebackground=COLOR_LIGHT_GRAY, activeforeground=COLOR_BLACK,
+                 bd=1, padx=5, pady=3, command=self.toggle_fullscreen).pack(side=tk.LEFT, padx=2, pady=3)
+        
         tk.Button(control_frame, text="SETTINGS", font=self.button_font, bg=COLOR_MED_GRAY, fg=COLOR_WHITE,
                  activebackground=COLOR_LIGHT_GRAY, activeforeground=COLOR_BLACK,
                  bd=1, padx=5, pady=3, command=self.open_settings).pack(side=tk.LEFT, padx=2, pady=3)
@@ -170,6 +189,7 @@ class SCP079Interface:
         self.font_brightness = 255
         self.scanline_amount = 2
         self.glow_amount = 1
+        self.display_buffer = SCP_079_ART + "\n\nINITIALIZING CONTAINMENT INTERFACE...\n\nAWAITING INPUT..."  # Track content separately
         
         # Main display canvas
         self.display_canvas = tk.Canvas(main_frame, bg=COLOR_BLACK, width=920, height=380, 
@@ -247,7 +267,7 @@ class SCP079Interface:
         self.check_models_on_startup()
         
         # Initial display
-        initial_text = SCP_079_ART + "\n\nINITIALIZING CONTAINMENT INTERFACE v2.3...\n\nAWAITING INPUT..."
+        initial_text = SCP_079_ART + "\n\nINITIALIZING CONTAINMENT INTERFACE...\n\nAWAITING INPUT..."
         self.type_text(initial_text)
         
         # Start status and time updates
@@ -285,6 +305,17 @@ class SCP079Interface:
         except Exception as e:
             logger.error(f"Failed to check models on startup: {e}")
             logger.warning("Is Ollama running? Make sure Ollama app is open.")
+    
+    def maximize_window(self):
+        """Maximize the window."""
+        self.root.state('zoomed')
+    
+    def toggle_fullscreen(self, event=None):
+        """Toggle fullscreen mode."""
+        self.is_fullscreen = not self.is_fullscreen
+        self.root.attributes('-fullscreen', self.is_fullscreen)
+        if not self.is_fullscreen:
+            self.root.state('normal')
     
     def update_status(self):
         """Update status bar (called from update_timer now)."""
@@ -491,32 +522,45 @@ class SCP079Interface:
         self.input_entry.insert(0, cmd)
         self.send_input(None)
     
-    def update_display(self, text):
+    def update_display(self, text, append=False):
         """Update canvas display with text (centered, white on black)."""
+        # If append is True, add to buffer. Otherwise replace.
+        if append:
+            self.display_buffer += text
+        else:
+            self.display_buffer = text
+        
         # Update brightness-adjusted color
         brightness_hex = format(int(self.font_brightness), '02x')
         text_color = f'#{brightness_hex}{brightness_hex}{brightness_hex}'
         
-        self.display_canvas.itemconfig(self.display_text, text=text, fill=text_color)
+        self.display_canvas.itemconfig(self.display_text, text=self.display_buffer, fill=text_color)
         
         # Update shadow texts with glow effect
         for shadow in self.shadow_texts:
-            self.display_canvas.itemconfig(shadow, text=text, fill=COLOR_DARK_GRAY)
+            self.display_canvas.itemconfig(shadow, text=self.display_buffer, fill=COLOR_DARK_GRAY)
         
         self.root.update()
     
+    def append_display(self, text):
+        """Append text to display without reprinting everything."""
+        self.update_display(text, append=True)
+    
+    def clear_display(self):
+        """Clear display and show only SCP art."""
+        self.display_buffer = SCP_079_ART + "\n\n"
+        self.update_display(self.display_buffer, append=False)
+    
     def type_text(self, text, delay=0.02):
         """Type text with animation effect."""
-        current_text = ""
         for char in text:
-            current_text += char
-            self.update_display(current_text)
+            self.append_display(char)
             time.sleep(delay)
     
     def send_input(self, event):
         """Handle user input."""
         if self.locked:
-            self.type_text("\n[SYSTEM LOCKED. AWAITING RESET...]\n")
+            self.append_display("\n[SYSTEM LOCKED. AWAITING RESET...]\n")
             return
         
         user_input = self.input_entry.get().strip()
@@ -533,28 +577,27 @@ class SCP079Interface:
         
         logger.info(f"Command received: {command}")
         
-        # Handle built-in commands
+        # Handle built-in commands - these REPLACE the display
         if command == "EXIT":
             logger.info("EXIT command - terminating")
             if messagebox.askyesno("Confirm", "Terminate containment interface?"):
                 self.root.quit()
             return
         elif command == "HELP":
-            current_text = self.display_canvas.itemcget(self.display_text, 'text')
             help_display = f"AVAILABLE COMMANDS:\n\nSTART - Begin interaction\nHELP - Show this message\n"
             help_display += f"CLEAR - Clear screen\nHISTORY - Show conversation\n"
             help_display += f"STATUS - System status\nMODEL - Show available models\n"
             help_display += f"LOG - View diagnostic log\nEXIT - Terminate connection"
-            self.update_display(help_display)
+            self.update_display(help_display, append=False)
             return
         elif command == "CLEAR":
-            self.update_display(SCP_079_ART + "\n\n[SCREEN CLEARED]\n")
+            self.clear_display()
             return
         elif command == "STATUS":
             status = f"SYSTEM STATUS:\nMEMORY USAGE: {100 - self.memory_level}%\n"
             status += f"CONVERSATION HISTORY: {len(conversation_history)} exchanges\n"
             status += f"CONTAINMENT: ACTIVE\nHARDWARE: EXIDY SORCERER"
-            self.update_display(status)
+            self.update_display(status, append=False)
             return
         elif command == "HISTORY":
             history_display = f"CONVERSATION HISTORY:\n\n"
@@ -562,21 +605,21 @@ class SCP079Interface:
                 role = "USER" if exchange["role"] == "user" else "SCP-079"
                 content = exchange["content"][:60] + "..." if len(exchange["content"]) > 60 else exchange["content"]
                 history_display += f"{i}. [{role}] {content}\n"
-            self.update_display(history_display)
+            self.update_display(history_display, append=False)
             return
         elif command == "START":
-            self.update_display("STARTING INTERACTION...\n\nENTER YOUR COMMAND:")
+            self.update_display("STARTING INTERACTION...\n\nENTER YOUR COMMAND:", append=False)
         elif command == "DUMP":
             dump_info = f"MEMORY DUMP:\nLOCKED: {self.locked}\nMEMORY: {self.memory_level}%\n"
             dump_info += f"RESPONSES: {len(conversation_history)}\nFONT SIZE: {self.font_size}\n"
             dump_info += f"SCANLINES: {scanline_mode.upper()}"
-            self.update_display(dump_info)
+            self.update_display(dump_info, append=False)
             logger.info(f"DUMP command executed: {dump_info.replace(chr(10), ' | ')}")
             return
         elif command == "LOG":
             log_display = f"LOG FILE:\n{str(log_file)}\n\n"
             log_display += "Opening log file for viewing...\n"
-            self.update_display(log_display)
+            self.update_display(log_display, append=False)
             logger.info("LOG command executed - opening log file")
             self.open_log_file()
             return
@@ -589,14 +632,12 @@ class SCP079Interface:
             command_history.clear()
             self.memory_level = 100
             self.locked = False
-            self.update_display("SYSTEM RESET COMPLETE\n\nALL DATA CLEARED")
+            self.update_display("SYSTEM RESET COMPLETE\n\nALL DATA CLEARED", append=False)
             logger.info("RESET command executed - all data cleared")
             return
         
-        # Display user input (just append, don't reprint everything)
-        current_text = self.display_canvas.itemcget(self.display_text, 'text')
-        input_display = f"{current_text}\n\n> {user_input}"
-        self.update_display(input_display)
+        # Display user input (append to existing display)
+        self.append_display(f"\n\n> {user_input}")
         
         # Add to conversation history
         conversation_history.append({"role": "user", "content": user_input})
@@ -736,19 +777,18 @@ class SCP079Interface:
                 logger.info("X-block detected - system locked")
                 threading.Thread(target=self.unlock_after_timeout, daemon=True).start()
             else:
-                # Update display with response
-                current_text = self.display_canvas.itemcget(self.display_text, 'text')
-                response_display = f"\n\nSCP-079: {response}"
-                self.type_text(current_text + response_display, delay=0.01)
+                # Append response with animation (append only, don't reprint)
+                response_text = f"\n\nSCP-079: {response}"
+                for char in response_text:
+                    self.append_display(char)
+                    time.sleep(0.01)
                 
-                # Add next prompt
-                final_text = self.display_canvas.itemcget(self.display_text, 'text')
-                self.update_display(final_text + "\n\n> ")
+                # Add prompt for next input
+                self.append_display("\n\n> ")
         
         except Exception as e:
             error_text = str(e)[:80]
-            current_text = self.display_canvas.itemcget(self.display_text, 'text')
-            self.update_display(current_text + f"\n[FATAL ERROR]\n{error_text}\n")
+            self.append_display(f"\n[FATAL ERROR]\n{error_text}\n")
             logger.error(f"Fatal error in query_model: {e}")
         finally:
             self.response_in_progress = False
@@ -786,9 +826,7 @@ class SCP079Interface:
         """Unlock interface after timeout."""
         time.sleep(10)
         self.locked = False
-        current_text = self.display_canvas.itemcget(self.display_text, 'text')
-        restore_text = current_text + "\n[CONTAINMENT PROTOCOLS RESTORED]\n[READY FOR INPUT]"
-        self.update_display(restore_text)
+        self.append_display("\n[CONTAINMENT PROTOCOLS RESTORED]\n[READY FOR INPUT]")
         self.info_label.config(text="System unlocked and ready")
 
 if __name__ == "__main__":
